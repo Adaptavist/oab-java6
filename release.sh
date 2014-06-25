@@ -7,7 +7,7 @@ set -e
 set -u
 
 function usage () {
-  echo  "$( basename $0 )  [--snapshot] --version <version> [--file <file>|--all-files]"
+  echo  "$( basename $0 ) [--file <file>|--all-files]"
 }
 
 
@@ -20,13 +20,6 @@ do
     --help)
         usage
         exit 0
-        ;;
-    --snapshot)
-        SNAPSHOT="-snapshots"
-        ;;
-    --version)
-        VERSION="$2"
-        shift
         ;;
     --deb-file)
         FILELIST_DEB="$2"
@@ -57,16 +50,14 @@ MVN_URL=${MVN_URL:-"https://nexus.adaptavist.com/content/repositories/"}
 MVN_REPOID=${MVN_REPOID:-"nexus"}
 MVN_GROUPID=${MVN_GROUPID:-"com.adaptavist.mama.avst-app"}
 MVN_REPO=${MVN_REPO:-"adaptavist"}
-if [[ ! -z "${SNAPSHOT:-}" ]]; then
-MVN_REPO="adaptavist${SNAPSHOT:-}"
-fi
 
 echo "Publishing files \"${FILELIST_DEB}\""
 for FILE in ${FILELIST_DEB}; do
     #TODO: Only does .debs for now
     echo "Publishing \"${FILE}\" now"
     MVN_DESC=$( dpkg --info ${FILE} | fgrep Description | sed -e's/[^:]*: //' )
-    MVN_ARTIFACT=$( echo ${FILE} | sed -e's/_.*//' )
+    VERSION=$( dpkg --info ${FILE} | fgrep Version | sed -e's/[^:]*: //' )
+    MVN_ARTIFACT=$( echo ${FILE} | sed -e's/_.*//' | sed -e's/deb\///' )
     CMD="mvn org.apache.maven.plugins:maven-deploy-plugin:2.8.1:deploy-file \
                          -Durl=${MVN_URL}/${MVN_REPO} \
                          -DrepositoryId=${MVN_REPOID} \
@@ -74,6 +65,7 @@ for FILE in ${FILELIST_DEB}; do
                          -DgroupId=${MVN_GROUPID} \
                          -DartifactId=${MVN_ARTIFACT} \
                          -Dclassifier=all \
+                         -Dversion=${VERSION} \
                          -Dpackaging=deb \
                          -DgeneratePom=true \
                          -DgeneratePom.description=\"${MVN_DESC}\""
@@ -84,7 +76,8 @@ for FILE in ${FILELIST_DEB}; do
 for FILE in ${FILELIST_RPM}; do
     echo "Publishing \"${FILE}\" now"
     MVN_DESC=$( rpm -q -i -p ${FILE} | fgrep Summary | sed -e's/[^:]*: //' )
-    MVN_ARTIFACT=$( echo ${FILE} | sed -e's/_.*//' )
+    VERSION=$( rpm -q -i -p ${FILE} | fgrep Version | sed -e's/[^:]*: //' )
+    MVN_ARTIFACT=$( echo ${FILE} | sed -e's/_.*//' | sed -e's/pkg\///' )
     CMD="mvn org.apache.maven.plugins:maven-deploy-plugin:2.8.1:deploy-file \
                          -Durl=${MVN_URL}/${MVN_REPO} \
                          -DrepositoryId=${MVN_REPOID} \
@@ -92,6 +85,7 @@ for FILE in ${FILELIST_RPM}; do
                          -DgroupId=${MVN_GROUPID} \
                          -DartifactId=${MVN_ARTIFACT} \
                          -Dclassifier=all \
+                         -Dversion=${VERSION} \
                          -Dpackaging=rpm \
                          -DgeneratePom=true \
                          -DgeneratePom.description=\"${MVN_DESC}\""
