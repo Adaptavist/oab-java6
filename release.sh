@@ -37,8 +37,8 @@ do
         shift
         ;;
     --all-files)
-        FILELIST_DEB=`echo /tmp/oab/*.deb`
-        FILELIST_RPM=`echo /tmp/oab/pkg/*.rpm`
+        FILELIST_DEB=`ls /tmp/oab/*.deb`
+        FILELIST_RPM=`ls /tmp/oab/pkg/*.rpm`
         ;;
     --*)
         echo "Invalid option: '$opt'"
@@ -61,6 +61,7 @@ if [[ ! -z "${SNAPSHOT:-}" ]]; then
 MVN_REPO="adaptavist${SNAPSHOT:-}"
 fi
 
+echo "Publishing files \"${FILELIST_DEB}\""
 for FILE in ${FILELIST_DEB}; do
     #TODO: Only does .debs for now
     echo "Publishing \"${FILE}\" now"
