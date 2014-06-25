@@ -59,7 +59,6 @@ MVN_GROUPID=${MVN_GROUPID:-"com.adaptavist.mama.avst-app"}
 MVN_REPO=${MVN_REPO:-"adaptavist"}
 if [[ ! -z "${SNAPSHOT:-}" ]]; then
 MVN_REPO="adaptavist${SNAPSHOT:-}"
-VERSION="${VERSION}-SNAPSHOT"
 fi
 
 for FILE in ${FILELIST_DEB}; do
@@ -73,7 +72,6 @@ for FILE in ${FILELIST_DEB}; do
                          -Dfile=${FILE} \
                          -DgroupId=${MVN_GROUPID} \
                          -DartifactId=${MVN_ARTIFACT} \
-                         -Dversion=${VERSION} \
                          -Dclassifier=all \
                          -Dpackaging=deb \
                          -DgeneratePom=true \
@@ -92,7 +90,6 @@ for FILE in ${FILELIST_RPM}; do
                          -Dfile=${FILE} \
                          -DgroupId=${MVN_GROUPID} \
                          -DartifactId=${MVN_ARTIFACT} \
-                         -Dversion=${VERSION} \
                          -Dclassifier=all \
                          -Dpackaging=rpm \
                          -DgeneratePom=true \
