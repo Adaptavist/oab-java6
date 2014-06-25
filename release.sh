@@ -37,7 +37,7 @@ do
         shift
         ;;
     --all-files)
-        FILELIST_DEB=$( echo /tmp/oab/deb/*.deb )
+        FILELIST_DEB=$( echo /tmp/oab/*.deb )
         FILELIST_RPM=$( echo /tmp/oab/pkg/*.rpm )
         ;;
     --*)
