@@ -37,7 +37,7 @@ do
         shift
         ;;
     --all-files)
-        FILELIST_DEB=`ls *.deb`
+        FILELIST_DEB=`ls deb/*.deb`
         FILELIST_RPM=`ls pkg/*.rpm`
         ;;
     --*)
