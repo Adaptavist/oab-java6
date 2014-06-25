@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sudo ./oab-java.sh
+./oab-java.sh -7
 
 exit 0
 

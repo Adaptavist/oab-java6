@@ -37,8 +37,8 @@ do
         shift
         ;;
     --all-files)
-        FILELIST_DEB=$( echo /var/local/oab/deb/*.deb )
-        FILELIST_RPM=$( echo /var/local/oab/pkg/*.rpm )
+        FILELIST_DEB=$( echo /tmp/oab/deb/*.deb )
+        FILELIST_RPM=$( echo /tmp/oab/pkg/*.rpm )
         ;;
     --*)
         echo "Invalid option: '$opt'"

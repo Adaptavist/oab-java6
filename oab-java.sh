@@ -115,17 +115,17 @@ function progress_can_fail() {
     done
 }
 
-function check_root() {
-    if [ "$(id -u)" != "0" ]; then
-        error_msg "ERROR! You must execute the script as the 'root' user."
-    fi
-}
+# function check_root() {
+#     if [ "$(id -u)" != "0" ]; then
+#         error_msg "ERROR! You must execute the script as the 'root' user."
+#     fi
+# }
 
-function check_sudo() {
-    if [ ! -n ${SUDO_USER} ]; then
-        error_msg "ERROR! You must invoke the script using 'sudo'."
-    fi
-}
+# function check_sudo() {
+#     if [ ! -n ${SUDO_USER} ]; then
+#         error_msg "ERROR! You must invoke the script using 'sudo'."
+#     fi
+# }
 
 function check_ubuntu() {
     if [ "${1}" != "" ]; then
@@ -169,11 +169,11 @@ function lsb() {
     LSB_NUM=`echo ${LSB_REL} | sed s'/\.//g'`
 }
 
-function apt_update() {
-    ncecho " [x] Update package list "
-    apt-get -y update >>"$log" 2>&1 &
-    pid=$!;progress $pid
-}
+# function apt_update() {
+#     ncecho " [x] Update package list "
+#     apt-get -y update >>"$log" 2>&1 &
+#     pid=$!;progress $pid
+# }
 # common ################################################################# END #
 
 function copyright_msg() {
@@ -347,15 +347,16 @@ function build_docs() {
 copyright_msg
 
 # Check we are running on a supported system in the correct way.
-check_root
-check_sudo
+# check_root
+# check_sudo
 check_ubuntu "all"
 
 # Init variables
 BUILD_KEY=""
 BUILD_CLEAN=0
 SKIP_REBUILD=""
-WORK_PATH="/var/local/oab"
+# WORK_PATH="/var/local/oab"
+WORK_PATH="/tmp/oab"
 JAVA_DEV="sun-java"
 JAVA_UPSTREAM="sun-java6"
 
@@ -368,7 +369,6 @@ fi
 OPTSTRING=87bchk:st:
 while getopts ${OPTSTRING} OPT
 do
-        echo ${OPT}
     case ${OPT} in
         7)
            JAVA_DEV="oracle-java"
@@ -476,11 +476,11 @@ JAVA_UPD=`echo ${DEB_VERSION} | cut -d'.' -f2 | cut -d'-' -f1`
 
 ncecho " [x] Getting releases download page "
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
-    wget http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase6-419409.html -O /tmp/oab-download.html >> "$log" 2>&1 &
+    wget http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase6-419409.html -O /tmp/oab/oab-download.html >> "$log" 2>&1 &
 elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
-    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html -O /tmp/oab-download.html >> "$log" 2>&1 &
+    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html -O /tmp/oab/oab-download.html >> "$log" 2>&1 &
 else
-    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html -O /tmp/oab-download.html >> "$log" 2>&1 &
+    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html -O /tmp/oab/oab-download.html >> "$log" 2>&1 &
 fi
 pid=$!;progress $pid
 
@@ -508,11 +508,11 @@ for JAVA_BIN in ${JAVA_BINS}
 do
     # Get the download URL and size
     if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
-        DOWNLOAD_URL=`grep ${JAVA_BIN} /tmp/oab-download.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4 | sed 's/otn/otn-pub/'`
+        DOWNLOAD_URL=`grep ${JAVA_BIN} /tmp/oab/oab-download.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4 | sed 's/otn/otn-pub/'`
     else
-        DOWNLOAD_URL=`grep ${JAVA_BIN} /tmp/oab-download.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+        DOWNLOAD_URL=`grep ${JAVA_BIN} /tmp/oab/oab-download.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     fi
-    DOWNLOAD_SIZE=`grep ${JAVA_BIN} /tmp/oab-download.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d':' -f2 | sed 's/"//g'`
+    DOWNLOAD_SIZE=`grep ${JAVA_BIN} /tmp/oab/oab-download.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d':' -f2 | sed 's/"//g'`
     # Cookies required for download
     timestamp=$((`date +%s` + 180000))
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
@@ -544,29 +544,29 @@ else
 fi
 
 DOWNLOAD_INDEX="technetwork/java/javase/downloads/jce${DOWNLOAD_VERSION}-download-${DOWNLOAD_INDEX_NO}.html"
-wget http://www.oracle.com/${DOWNLOAD_INDEX} -O /tmp/oab-download-jce.html >> "$log" 2>&1 &
+wget http://www.oracle.com/${DOWNLOAD_INDEX} -O /tmp/oab/oab-download-jce.html >> "$log" 2>&1 &
 pid=$!;progress $pid
 
 # Get JCE download URL, size, and cookies required for download
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     JCE_POLICY="jce_policy-6.zip"
-    DOWNLOAD_PATH=`grep "jce[^']*-6-oth-JPR'\]\['path" /tmp/oab-download-jce.html | cut -d'=' -f2 | cut -d'"' -f2`
+    DOWNLOAD_PATH=`grep "jce[^']*-6-oth-JPR'\]\['path" /tmp/oab/oab-download-jce.html | cut -d'=' -f2 | cut -d'"' -f2`
     DOWNLOAD_URL="${DOWNLOAD_PATH}${JCE_POLICY}"
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
 elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
     JCE_POLICY="UnlimitedJCEPolicyJDK7.zip"
-    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     COOKIES="oraclelicensejce-7-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
     timestamp=$((`date +%s` + 180000))
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
 else    
     JCE_POLICY="jce_policy-8.zip"
-    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     COOKIES="oraclelicensejce-8-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
     timestamp=$((`date +%s` + 180000))
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
 fi
-DOWNLOAD_SIZE=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
+DOWNLOAD_SIZE=`grep ${JCE_POLICY} /tmp/oab/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
 
 ncecho " [x] Downloading ${JCE_POLICY} : ${DOWNLOAD_SIZE} "
 wget --no-check-certificate --header="Cookie: ${COOKIES}" -c "${DOWNLOAD_URL}" -O ${WORK_PATH}/pkg/${JCE_POLICY} >> "$log" 2>&1 &
@@ -624,113 +624,5 @@ if [ -e ${WORK_PATH}/${JAVA_DEV}${JAVA_VER}_${NEW_VERSION}_${LSB_ARCH}.changes ]
 else
     error_msg "ERROR! Packages failed to build."
 fi
-
-# Create a temporary 'override' file, which may contain duplicates
-echo "#Override" > /tmp/override
-echo "#Package priority section" >> /tmp/override
-for FILE in ${WORK_PATH}/deb/*.deb
-do
-    DEB_PACKAGE=`dpkg --info ${FILE} | grep Package | cut -d':' -f2`
-    DEB_SECTION=`dpkg --info ${FILE} | grep Section | cut -d'/' -f2`
-    echo "${DEB_PACKAGE} high ${DEB_SECTION}" >> /tmp/override
-done
-
-# Remove the duplicates from the overide file
-uniq /tmp/override > ${WORK_PATH}/deb/override
-
-# Create the 'apt' Packages.gz
-ncecho " [x] Creating Packages.gz file "
-cd ${WORK_PATH}/deb
-dpkg-scanpackages . override 2>/dev/null > Packages
-cat Packages | gzip -c9 > Packages.gz
-rm ${WORK_PATH}/deb/override 2>/dev/null
-cecho success
-
-# Create a 'Release' file
-ncecho " [x] Creating Release file "
-cd ${WORK_PATH}/deb
-echo "Origin: ${HOSTNAME}"                 > Release
-echo "Label: Java"                        >> Release
-echo "Suite: ${LSB_CODE}"                 >> Release
-echo "Version: ${LSB_REL}"                >> Release
-echo "Codename: ${LSB_CODE}"              >> Release
-echo "Date: `date -R`"                    >> Release
-echo "Architectures: ${LSB_ARCH}"         >> Release
-echo "Components: restricted"             >> Release
-echo "Description: Local Java Repository" >> Release
-echo "MD5Sum:"                            >> Release
-for PACKAGE in Packages*
-do
-    printf ' '`md5sum ${PACKAGE} | cut -d' ' -f1`" %16d ${PACKAGE}\n" `wc --bytes ${PACKAGE} | cut -d' ' -f1` >> Release
-done
-cecho success
-
-# Do we need to create signing keys
-if [ -z "${BUILD_KEY}" ] && [ ! -e ${WORK_PATH}/gpg/pubring.gpg ] && [ ! -e ${WORK_PATH}/gpg/secring.gpg ] && [ ! -e ${WORK_PATH}/gpg/trustdb.gpg ]; then
-    ncecho " [x] Create GnuPG configuration "
-    echo "Key-Type: DSA" > ${WORK_PATH}/gpg-key.conf
-    echo "Key-Length: 1024" >> ${WORK_PATH}/gpg-key.conf
-    echo "Subkey-Type: ELG-E" >> ${WORK_PATH}/gpg-key.conf
-    echo "Subkey-Length: 2048" >> ${WORK_PATH}/gpg-key.conf
-    echo "Name-Real: ${HOSTNAME}" >> ${WORK_PATH}/gpg-key.conf
-    echo "Name-Email: root@${HOSTNAME}" >> ${WORK_PATH}/gpg-key.conf
-    echo "Expire-Date: 0" >> ${WORK_PATH}/gpg-key.conf
-    cecho success
-
-    # OpenVZ Check... Don't run if in OpenVZ
-    if [ ! -e /proc/user_beancounters ]; then
-        # Stop the system 'rngd'.
-        /etc/init.d/rng-tools stop >> "$log" 2>&1
-
-        ncecho " [x] Start generating entropy "
-        rngd -r /dev/urandom -p /tmp/rngd.pid >> "$log" 2>&1 &
-        pid=$!;progress $pid
-    fi
-
-    ncecho " [x] Creating signing key "
-    gpg --homedir ${WORK_PATH}/gpg --batch --gen-key ${WORK_PATH}/gpg-key.conf >> "$log" 2>&1 &
-    pid=$!;progress $pid
-
-    # OpenVZ Check... Don't run if in OpenVZ (same as above)
-    if [ ! -e /proc/user_beancounters ]; then
-        ncecho " [x] Stop generating entropy "
-        kill -9 `cat /tmp/rngd.pid` >> "$log" 2>&1 &
-        pid=$!;progress $pid
-        rm /tmp/rngd.pid 2>/dev/null
-
-        # Start the system 'rngd'.
-        /etc/init.d/rng-tools start >> "$log" 2>&1
-    fi
-fi
-
-# Do we have signing keys or a user specified key, if so use them.
-if [ -n "${BUILD_KEY}" ] || [ -e ${WORK_PATH}/gpg/pubring.gpg ] && [ -e ${WORK_PATH}/gpg/secring.gpg ] && [ -e ${WORK_PATH}/gpg/trustdb.gpg ]; then
-    # Sign the Release
-    ncecho " [x] Signing the 'Release' file "
-    rm ${WORK_PATH}/deb/Release.gpg 2>/dev/null
-    if [ -n "${BUILD_KEY}" ] ; then
-        GPG_OPTION=(--default-key "${BUILD_KEY}")
-    else
-        GPG_OPTION=(--homedir ${WORK_PATH}/gpg)
-    fi
-    gpg "${GPG_OPTION[@]}" --armor --detach-sign --output ${WORK_PATH}/deb/Release.gpg ${WORK_PATH}/deb/Release >> "$log" 2>&1 &
-    pid=$!;progress $pid
-
-    if [ -z "${BUILD_KEY}" ] ; then
-        # Export public signing key
-        ncecho " [x] Exporting public key "
-        gpg --homedir ${WORK_PATH}/gpg --export -a "${HOSTNAME}" > ${WORK_PATH}/deb/pubkey.asc
-        cecho success
-
-        # Add the public signing key
-        ncecho " [x] Adding public key "
-        apt-key add ${WORK_PATH}/deb/pubkey.asc >> "$log" 2>&1 &
-        pid=$!;progress $pid
-    fi
-fi
-
-# Update apt cache
-echo "deb file://${WORK_PATH}/deb / #Local Java - https://github.com/flexiondotorg/oab-java6" > /etc/apt/sources.list.d/oab.list
-apt_update
 
 echo "All done!"
