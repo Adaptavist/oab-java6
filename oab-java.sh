@@ -599,9 +599,9 @@ if [ -f prepare.sh ]; then
 fi
 
 # Update the changelog
-ncecho " [x] Updating the changelog "
-dch --distribution ${LSB_CODE} --force-distribution --newversion ${NEW_VERSION} --force-bad-version --urgency=${DEB_URGENCY} "${BUILD_MESSAGE}" >> "$log" 2>&1 &
-pid=$!;progress $pid
+# ncecho " [x] Updating the changelog "
+# dch --distribution ${LSB_CODE} --force-distribution --newversion ${NEW_VERSION} --force-bad-version --urgency=${DEB_URGENCY} "${BUILD_MESSAGE}" >> "$log" 2>&1 &
+# pid=$!;progress $pid
 
 # Build the binary packages
 ncecho " [x] Building the packages "
