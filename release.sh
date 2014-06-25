@@ -37,8 +37,8 @@ do
         shift
         ;;
     --all-files)
-        FILELIST_DEB=`ls /tmp/oab/*.deb`
-        FILELIST_RPM=`ls /tmp/oab/pkg/*.rpm`
+        FILELIST_DEB=`ls *.deb`
+        FILELIST_RPM=`ls pkg/*.rpm`
         ;;
     --*)
         echo "Invalid option: '$opt'"

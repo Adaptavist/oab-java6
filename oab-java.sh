@@ -356,7 +356,7 @@ BUILD_KEY=""
 BUILD_CLEAN=0
 SKIP_REBUILD=""
 # WORK_PATH="/var/local/oab"
-WORK_PATH="/tmp/oab"
+WORK_PATH=`pwd`
 JAVA_DEV="sun-java"
 JAVA_UPSTREAM="sun-java6"
 
@@ -476,11 +476,11 @@ JAVA_UPD=`echo ${DEB_VERSION} | cut -d'.' -f2 | cut -d'-' -f1`
 
 ncecho " [x] Getting releases download page "
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
-    wget http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase6-419409.html -O /tmp/oab/oab-download.html >> "$log" 2>&1 &
+    wget http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase6-419409.html -O "${WORK_PATH}/oab-download.html" >> "$log" 2>&1 &
 elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
-    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html -O /tmp/oab/oab-download.html >> "$log" 2>&1 &
+    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html -O "${WORK_PATH}/oab-download.html" >> "$log" 2>&1 &
 else
-    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html -O /tmp/oab/oab-download.html >> "$log" 2>&1 &
+    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html -O "${WORK_PATH}/oab-download.html" >> "$log" 2>&1 &
 fi
 pid=$!;progress $pid
 
@@ -508,11 +508,11 @@ for JAVA_BIN in ${JAVA_BINS}
 do
     # Get the download URL and size
     if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
-        DOWNLOAD_URL=`grep ${JAVA_BIN} /tmp/oab/oab-download.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4 | sed 's/otn/otn-pub/'`
+        DOWNLOAD_URL=`grep ${JAVA_BIN} "${WORK_PATH}/oab-download.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4 | sed 's/otn/otn-pub/'`
     else
-        DOWNLOAD_URL=`grep ${JAVA_BIN} /tmp/oab/oab-download.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+        DOWNLOAD_URL=`grep ${JAVA_BIN} "${WORK_PATH}/oab-download.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     fi
-    DOWNLOAD_SIZE=`grep ${JAVA_BIN} /tmp/oab/oab-download.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d':' -f2 | sed 's/"//g'`
+    DOWNLOAD_SIZE=`grep ${JAVA_BIN} "${WORK_PATH}/oab-download.html" | cut -d'{' -f2 | cut -d',' -f2 | cut -d':' -f2 | sed 's/"//g'`
     # Cookies required for download
     timestamp=$((`date +%s` + 180000))
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
@@ -544,29 +544,29 @@ else
 fi
 
 DOWNLOAD_INDEX="technetwork/java/javase/downloads/jce${DOWNLOAD_VERSION}-download-${DOWNLOAD_INDEX_NO}.html"
-wget http://www.oracle.com/${DOWNLOAD_INDEX} -O /tmp/oab/oab-download-jce.html >> "$log" 2>&1 &
+wget http://www.oracle.com/${DOWNLOAD_INDEX} -O "${WORK_PATH}/oab-download-jce.html" >> "$log" 2>&1 &
 pid=$!;progress $pid
 
 # Get JCE download URL, size, and cookies required for download
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     JCE_POLICY="jce_policy-6.zip"
-    DOWNLOAD_PATH=`grep "jce[^']*-6-oth-JPR'\]\['path" /tmp/oab/oab-download-jce.html | cut -d'=' -f2 | cut -d'"' -f2`
+    DOWNLOAD_PATH=`grep "jce[^']*-6-oth-JPR'\]\['path" "${WORK_PATH}/oab-download-jce.html" | cut -d'=' -f2 | cut -d'"' -f2`
     DOWNLOAD_URL="${DOWNLOAD_PATH}${JCE_POLICY}"
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
 elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
     JCE_POLICY="UnlimitedJCEPolicyJDK7.zip"
-    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+    DOWNLOAD_URL=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     COOKIES="oraclelicensejce-7-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
     timestamp=$((`date +%s` + 180000))
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
 else    
     JCE_POLICY="jce_policy-8.zip"
-    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+    DOWNLOAD_URL=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     COOKIES="oraclelicensejce-8-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
     timestamp=$((`date +%s` + 180000))
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
 fi
-DOWNLOAD_SIZE=`grep ${JCE_POLICY} /tmp/oab/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
+DOWNLOAD_SIZE=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
 
 ncecho " [x] Downloading ${JCE_POLICY} : ${DOWNLOAD_SIZE} "
 wget --no-check-certificate --header="Cookie: ${COOKIES}" -c "${DOWNLOAD_URL}" -O ${WORK_PATH}/pkg/${JCE_POLICY} >> "$log" 2>&1 &
