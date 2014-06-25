@@ -220,6 +220,7 @@ function usage() {
     echo "Optional parameters"
     echo
     echo "  * -7              : Build ``oracle-java7`` packages instead of ``sun-java6``"
+    echo "  * -8              : Build ``oracle-java8`` packages instead of ``sun-java6``"
     echo "  * -c              : Remove pre-existing packages from ``${WORK_PATH}/deb`` and sources from ``${WORK_PATH}/src``."
     echo "  * -k <gpg-key-id> : Use the specified existing key instead of generating one"
     echo "  * -s              : Skip building if the packages already exist"
@@ -364,13 +365,18 @@ if [ -f $log ]; then
 fi
 
 # Parse the options
-OPTSTRING=7bchk:st:
+OPTSTRING=87bchk:st:
 while getopts ${OPTSTRING} OPT
 do
+        echo ${OPT}
     case ${OPT} in
         7)
            JAVA_DEV="oracle-java"
            JAVA_UPSTREAM="oracle-java7"
+           ;;
+        8)
+           JAVA_DEV="oracle-java"
+           JAVA_UPSTREAM="oracle-java8"
            ;;
         b) build_docs;;
         c) BUILD_CLEAN=1;;
@@ -383,8 +389,8 @@ do
 done
 shift "$(( $OPTIND - 1 ))"
 
-if [ "${JAVA_UPSTREAM}" == "oracle-java7" ] && [ "${LSB_CODE}" == "lucid" ]; then
-    ncecho " [!] Building Java 7 on Ubuntu Lucid is no longer supported "
+if [[ ("${JAVA_UPSTREAM}" == "oracle-java7" || "${JAVA_UPSTREAM}" == "oracle-java8") && "${LSB_CODE}" == "lucid" ]]; then
+    ncecho " [!] Building Java 7 or 8 on Ubuntu Lucid is no longer supported "
     cecho exitting
     exit 1
 fi
@@ -412,7 +418,7 @@ if [ "${LSB_ARCH}" == "amd64" ] && [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     fi
 fi
 
-if [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
+if [[ "${JAVA_UPSTREAM}" == "oracle-java7" || "${JAVA_UPSTREAM}" == "oracle-java8" ]]; then
     BUILD_DEPS="${BUILD_DEPS} libxrender1"
 fi
 
@@ -471,22 +477,26 @@ JAVA_UPD=`echo ${DEB_VERSION} | cut -d'.' -f2 | cut -d'-' -f1`
 ncecho " [x] Getting releases download page "
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     wget http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase6-419409.html -O /tmp/oab-download.html >> "$log" 2>&1 &
-else
+elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
     wget http://www.oracle.com/technetwork/java/javase/downloads/jdk7-downloads-1880260.html -O /tmp/oab-download.html >> "$log" 2>&1 &
+else
+    wget http://www.oracle.com/technetwork/java/javase/downloads/jdk8-downloads-2133151.html -O /tmp/oab-download.html >> "$log" 2>&1 &
 fi
 pid=$!;progress $pid
 
 # Set the files we're downloading since sun-java6 and oracle-java7 differ.
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     JAVA_EXT=.bin
+    JAVA_RMP_EXT=-rpm.bin
 else
     JAVA_EXT=.tar.gz
+    JAVA_RMP_EXT=.rpm
 fi
-if grep -q ia32 ${WORK_PATH}/src/debian/rules; then
-    # Upstream still builds ia32 package, download both architectures
-    JAVA_BINS="jdk-${JAVA_VER}u${JAVA_UPD}-linux-i586${JAVA_EXT} jdk-${JAVA_VER}u${JAVA_UPD}-linux-x64${JAVA_EXT}"
+if grep -q 'srcdir.*:=.*$(arch)' ${WORK_PATH}/src/debian/rules; then
+    # Upstream requires binary files for both architectures
+    JAVA_BINS="jdk-${JAVA_VER}u${JAVA_UPD}-linux-i586${JAVA_EXT} jdk-${JAVA_VER}u${JAVA_UPD}-linux-x64${JAVA_EXT} jdk-${JAVA_VER}u${JAVA_UPD}-linux-x64${JAVA_RMP_EXT} jdk-${JAVA_VER}u${JAVA_UPD}-linux-i586${JAVA_RMP_EXT}"
 else
-    # Upstream has removed ia32 package, just download the appropriate one
+    # Upstream requires binary file of the machine's architecture only
     if [ "${LSB_ARCH}" == "amd64" ]; then
         JAVA_BINS="jdk-${JAVA_VER}u${JAVA_UPD}-linux-x64${JAVA_EXT}"
     else
@@ -504,25 +514,36 @@ do
     fi
     DOWNLOAD_SIZE=`grep ${JAVA_BIN} /tmp/oab-download.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d':' -f2 | sed 's/"//g'`
     # Cookies required for download
-    COOKIES="oraclelicensejdk-${JAVA_VER}u${JAVA_UPD}-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
+    timestamp=$((`date +%s` + 180000))
+    COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
+    #COOKIES="oraclelicensejdk-${JAVA_VER}u${JAVA_UPD}-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
 
     ncecho " [x] Downloading ${JAVA_BIN} : ${DOWNLOAD_SIZE} "
+    
     wget --no-check-certificate --header="Cookie: ${COOKIES}" -c "${DOWNLOAD_URL}" -O ${WORK_PATH}/pkg/${JAVA_BIN} >> "$log" 2>&1 &
+    
     pid=$!;progress_loop $pid
-
-    ncecho " [x] Symlinking ${JAVA_BIN} "
-    ln -s ${WORK_PATH}/pkg/${JAVA_BIN} ${WORK_PATH}/src/${JAVA_BIN} >> "$log" 2>&1 &
-    pid=$!;progress_loop $pid
+    
+    if [[ ! "${JAVA_BIN}" =~ .rmp ]]; then  
+        ncecho " [x] Symlinking ${JAVA_BIN} "
+        ln -s ${WORK_PATH}/pkg/${JAVA_BIN} ${WORK_PATH}/src/${JAVA_BIN} >> "$log" 2>&1 &
+        pid=$!;progress_loop $pid
+    fi
 done
 
 # Get JCE download index
 if [ $JAVA_VER == "7" ]; then
-  DOWNLOAD_INDEX_NO='432124'
+    DOWNLOAD_INDEX_NO='432124'
+    DOWNLOAD_VERSION="-7"
+elif [ $JAVA_VER == "8" ]; then
+    DOWNLOAD_INDEX_NO='2133166'
+    DOWNLOAD_VERSION="8"
 else
-  DOWNLOAD_INDEX_NO='429243'
+    DOWNLOAD_INDEX_NO='429243'
+    DOWNLOAD_VERSION="-6"
 fi
 
-DOWNLOAD_INDEX="technetwork/java/javase/downloads/jce-${JAVA_VER}-download-${DOWNLOAD_INDEX_NO}.html"
+DOWNLOAD_INDEX="technetwork/java/javase/downloads/jce${DOWNLOAD_VERSION}-download-${DOWNLOAD_INDEX_NO}.html"
 wget http://www.oracle.com/${DOWNLOAD_INDEX} -O /tmp/oab-download-jce.html >> "$log" 2>&1 &
 pid=$!;progress $pid
 
@@ -532,10 +553,18 @@ if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     DOWNLOAD_PATH=`grep "jce[^']*-6-oth-JPR'\]\['path" /tmp/oab-download-jce.html | cut -d'=' -f2 | cut -d'"' -f2`
     DOWNLOAD_URL="${DOWNLOAD_PATH}${JCE_POLICY}"
     COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
-else
+elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
     JCE_POLICY="UnlimitedJCEPolicyJDK7.zip"
     DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
     COOKIES="oraclelicensejce-7-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
+    timestamp=$((`date +%s` + 180000))
+    COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
+else    
+    JCE_POLICY="jce_policy-8.zip"
+    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+    COOKIES="oraclelicensejce-8-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
+    timestamp=$((`date +%s` + 180000))
+    COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
 fi
 DOWNLOAD_SIZE=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
 
@@ -561,6 +590,13 @@ BUILD_MESSAGE="Automated build for ${LSB_REL} using https://github.com/rraptorr/
 
 # Change directory to the build directory
 cd ${WORK_PATH}/src
+
+# Run upstream's preparing script if it exists
+if [ -f prepare.sh ]; then
+    ncecho " [x] Inflating archives "
+    ./prepare.sh >> "$log" 2>&1 &
+    pid=$!;progress $pid
+fi
 
 # Update the changelog
 ncecho " [x] Updating the changelog "
