@@ -181,7 +181,7 @@ function copyright_msg() {
     if [ "${MODE}" == "build_docs" ]; then
         echo "# OAB-Java"
     fi
-    echo `basename ${0}`" v${VER} - Create a local 'apt' repository for Sun Java 6 and/or Oracle Java 7 packages."
+    echo `basename ${0}`" v${VER} - Create a local 'apt' repository for Sun Java 6 and/or Oracle Java 7 and/or Oracle Java 8 packages."
     echo
     echo "Copyright (c) Martin Wimpress, http://flexion.org. MIT License"
     echo
@@ -255,6 +255,7 @@ function usage() {
     echo
     echo "  * <https://github.com/rraptorr/sun-java6>"
     echo "  * <https://github.com/rraptorr/oracle-java7>"
+    echo "  * <https://github.com/rraptorr/oracle-java8>"
     echo
     echo "The basic execution steps are:"
     echo
@@ -283,6 +284,10 @@ function usage() {
     echo
     echo "    sudo apt-get install oracle-java7-jre"
     echo
+    echo "Or if you ran the script with the ``-8`` option."
+    echo
+    echo "    sudo apt-get install oracle-java8-jre"
+    echo
     echo "If you already have the *\"official\"* Ubuntu packages installed then you"
     echo "can upgrade by executing the following from a shell."
     echo
@@ -298,7 +303,7 @@ function usage() {
     echo
     echo "## Known Issues"
     echo
-    echo "  * Building Java 7 on Ubuntu Lucid 10.04 is no longer supported as the upstream scripts"
+    echo "  * Building Java 7 or 8 on Ubuntu Lucid 10.04 is no longer supported as the upstream scripts"
     echo "  require ``debhelper``>=8 which is not officially available for Lucid."
     echo "  * The Oracle download servers can be horribly slow. My script caches the downloads"
     echo "  so you only need download each file once."
@@ -366,13 +371,13 @@ if [ -f $log ]; then
 fi
 
 # Parse the options
-OPTSTRING=87bchk:st:
+OPTSTRING=78bchk:st:
 while getopts ${OPTSTRING} OPT
 do
     case ${OPT} in
-        7)
+        7|8)
            JAVA_DEV="oracle-java"
-           JAVA_UPSTREAM="oracle-java7"
+           JAVA_UPSTREAM="oracle-java${OPT}"
            ;;
         8)
            JAVA_DEV="oracle-java"
@@ -389,7 +394,7 @@ do
 done
 shift "$(( $OPTIND - 1 ))"
 
-if [[ ("${JAVA_UPSTREAM}" == "oracle-java7" || "${JAVA_UPSTREAM}" == "oracle-java8") && "${LSB_CODE}" == "lucid" ]]; then
+if [ "${JAVA_DEV}" == "oracle-java" ] && [ "${LSB_CODE}" == "lucid" ]; then
     ncecho " [!] Building Java 7 or 8 on Ubuntu Lucid is no longer supported "
     cecho exitting
     exit 1
@@ -418,13 +423,17 @@ if [ "${LSB_ARCH}" == "amd64" ] && [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     fi
 fi
 
-if [[ "${JAVA_UPSTREAM}" == "oracle-java7" || "${JAVA_UPSTREAM}" == "oracle-java8" ]]; then
-    BUILD_DEPS="${BUILD_DEPS} libxrender1"
+if [ "${JAVA_UPSTREAM}" == "oracle-java8" ]; then
+    BUILD_DEPS="${BUILD_DEPS} libx11-6 libxext6"
+fi
+
+if [ "${JAVA_DEV}" == "oracle-java" ]; then
+    BUILD_DEPS="${BUILD_DEPS} libxrender1 curl"
 fi
 
 # Install the Java build requirements
 ncecho " [x] Installing Java build requirements "
-#apt-get install -y --no-install-recommends ${BUILD_DEPS} >> "$log" 2>&1 &
+apt-get install -y --no-install-recommends ${BUILD_DEPS} >> "$log" 2>&1 &
 pid=$!;progress $pid
 
 # Make sure the required dirs exist.
@@ -474,6 +483,13 @@ DEB_URGENCY=`head -n1 ${WORK_PATH}/src/debian/changelog | cut -d'=' -f2`
 JAVA_VER=`echo ${DEB_VERSION} | cut -d'.' -f1`
 JAVA_UPD=`echo ${DEB_VERSION} | cut -d'.' -f2 | cut -d'-' -f1`
 
+# The first Java8 release doesn't have a u[0-9]* part
+if [ "${JAVA_UPD}" == "0" ]; then
+    JAVA_UPD=
+else
+    JAVA_UPD="u${JAVA_UPD}"
+fi
+
 ncecho " [x] Getting releases download page "
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     wget http://www.oracle.com/technetwork/java/javasebusiness/downloads/java-archive-downloads-javase6-419409.html -O "${WORK_PATH}/oab-download.html" >> "$log" 2>&1 &
@@ -484,7 +500,7 @@ else
 fi
 pid=$!;progress $pid
 
-# Set the files we're downloading since sun-java6 and oracle-java7 differ.
+# Set the files we're downloading since sun-java6 and oracle-java7/8 differ.
 if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     JAVA_EXT=.bin
     JAVA_RMP_EXT=-rpm.bin
@@ -498,11 +514,14 @@ if grep -q 'srcdir.*:=.*$(arch)' ${WORK_PATH}/src/debian/rules; then
 else
     # Upstream requires binary file of the machine's architecture only
     if [ "${LSB_ARCH}" == "amd64" ]; then
-        JAVA_BINS="jdk-${JAVA_VER}u${JAVA_UPD}-linux-x64${JAVA_EXT}"
+        JAVA_BINS="jdk-${JAVA_VER}${JAVA_UPD}-linux-x64${JAVA_EXT}"
     else
-        JAVA_BINS="jdk-${JAVA_VER}u${JAVA_UPD}-linux-i586${JAVA_EXT}"
+        JAVA_BINS="jdk-${JAVA_VER}${JAVA_UPD}-linux-i586${JAVA_EXT}"
     fi
 fi
+
+# Cookies required for download
+COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
 
 for JAVA_BIN in ${JAVA_BINS}
 do
@@ -519,12 +538,12 @@ do
     #COOKIES="oraclelicensejdk-${JAVA_VER}u${JAVA_UPD}-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
 
     ncecho " [x] Downloading ${JAVA_BIN} : ${DOWNLOAD_SIZE} "
-    
+
     wget --no-check-certificate --header="Cookie: ${COOKIES}" -c "${DOWNLOAD_URL}" -O ${WORK_PATH}/pkg/${JAVA_BIN} >> "$log" 2>&1 &
-    
+
     pid=$!;progress_loop $pid
-    
-    if [[ ! "${JAVA_BIN}" =~ .rmp ]]; then  
+
+    if [[ ! "${JAVA_BIN}" =~ .rmp ]]; then
         ncecho " [x] Symlinking ${JAVA_BIN} "
         ln -s ${WORK_PATH}/pkg/${JAVA_BIN} ${WORK_PATH}/src/${JAVA_BIN} >> "$log" 2>&1 &
         pid=$!;progress_loop $pid
@@ -532,19 +551,19 @@ do
 done
 
 # Get JCE download index
-if [ $JAVA_VER == "7" ]; then
-    DOWNLOAD_INDEX_NO='432124'
-    DOWNLOAD_VERSION="-7"
-elif [ $JAVA_VER == "8" ]; then
-    DOWNLOAD_INDEX_NO='2133166'
-    DOWNLOAD_VERSION="8"
+if [ "${JAVA_VER}" == "8" ]; then
+  DOWNLOAD_INDEX_NO='2133166'
+  DOWNLOAD_INDEX_JCE='jce'
+elif [ "${JAVA_VER}" == "7" ]; then
+  DOWNLOAD_INDEX_NO='432124'
+  DOWNLOAD_INDEX_JCE='jce-'
 else
-    DOWNLOAD_INDEX_NO='429243'
-    DOWNLOAD_VERSION="-6"
+  DOWNLOAD_INDEX_NO='429243'
+  DOWNLOAD_INDEX_JCE='jce-'
 fi
 
-DOWNLOAD_INDEX="technetwork/java/javase/downloads/jce${DOWNLOAD_VERSION}-download-${DOWNLOAD_INDEX_NO}.html"
-wget http://www.oracle.com/${DOWNLOAD_INDEX} -O "${WORK_PATH}/oab-download-jce.html" >> "$log" 2>&1 &
+DOWNLOAD_INDEX="technetwork/java/javase/downloads/${DOWNLOAD_INDEX_JCE}${JAVA_VER}-download-${DOWNLOAD_INDEX_NO}.html"
+wget http://www.oracle.com/${DOWNLOAD_INDEX} -O /tmp/oab-download-jce.html >> "$log" 2>&1 &
 pid=$!;progress $pid
 
 # Get JCE download URL, size, and cookies required for download
@@ -552,19 +571,13 @@ if [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
     JCE_POLICY="jce_policy-6.zip"
     DOWNLOAD_PATH=`grep "jce[^']*-6-oth-JPR'\]\['path" "${WORK_PATH}/oab-download-jce.html" | cut -d'=' -f2 | cut -d'"' -f2`
     DOWNLOAD_URL="${DOWNLOAD_PATH}${JCE_POLICY}"
-    COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
-elif [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
-    JCE_POLICY="UnlimitedJCEPolicyJDK7.zip"
-    DOWNLOAD_URL=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
-    COOKIES="oraclelicensejce-7-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
-    timestamp=$((`date +%s` + 180000))
-    COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
-else    
-    JCE_POLICY="jce_policy-8.zip"
-    DOWNLOAD_URL=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
-    COOKIES="oraclelicensejce-8-oth-JPR=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com"
-    timestamp=$((`date +%s` + 180000))
-    COOKIES="oraclelicense=accept-securebackup-cookie;gpw_e24=http://edelivery.oracle.com;s_cc=true;s_sq=%5B%5BB%5D%5D;s_nr=$timestamp"
+elif [ "${JAVA_DEV}" == "oracle-java" ]; then
+    if [ "${JAVA_UPSTREAM}" == "oracle-java7" ]; then
+        JCE_POLICY="UnlimitedJCEPolicyJDK7.zip"
+    else
+        JCE_POLICY="jce_policy-8.zip"
+    fi
+    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
 fi
 DOWNLOAD_SIZE=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
 
@@ -597,6 +610,7 @@ if [ -f prepare.sh ]; then
     ./prepare.sh >> "$log" 2>&1 &
     pid=$!;progress $pid
 fi
+
 # Update the changelog
 ncecho " [x] Updating the changelog "
 dch --distribution ${LSB_CODE} --force-distribution --newversion ${NEW_VERSION} --force-bad-version --urgency=${DEB_URGENCY} "${BUILD_MESSAGE}" >> "$log" 2>&1 &
