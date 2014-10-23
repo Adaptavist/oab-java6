@@ -169,11 +169,11 @@ function lsb() {
     LSB_NUM=`echo ${LSB_REL} | sed s'/\.//g'`
 }
 
-# function apt_update() {
-#     ncecho " [x] Update package list "
-#     apt-get -y update >>"$log" 2>&1 &
-#     pid=$!;progress $pid
-# }
+function apt_update() {
+    ncecho " [x] Update package list "
+    #apt-get -y update >>"$log" 2>&1 &
+    #pid=$!;progress $pid
+}
 # common ################################################################# END #
 
 function copyright_msg() {
@@ -412,12 +412,12 @@ BUILD_DEPS="build-essential debhelper devscripts dpkg-dev git-core \
 gnupg libasound2 libxi6 libxt6 libxtst6 rng-tools unixodbc unzip"
 
 if [ "${LSB_ARCH}" == "amd64" ] && [ "${JAVA_UPSTREAM}" == "sun-java6" ]; then
-    BUILD_DEPS="${BUILD_DEPS} lib32asound2 ia32-libs"
-    if [ "${LSB_CODE}" == "wheezy" ]; then
+    BUILD_DEPS="${BUILD_DEPS} libasound2 lib32z1 lib32ncurses5 lib32bz2-1.0"
+    if [ "${LSB_CODE}" == "wheezy" ] || [ "${LSB_CODE}" == "trusty" ]; then
         # Wheezy need the i386 arch to enable provide access to the tranisitional ia32-libs.
-        # https://github.com/rraptorr/sun-java6/issues/26
+        # https://github.com/adaptavist/sun-java6/issues/26
         ncecho " [x] Adding i386 architecture "
-        dpkg --add-architecture i386
+        # dpkg --add-architecture i386
         pid=$!;progress $pid
         apt_update
     fi
@@ -432,9 +432,9 @@ if [ "${JAVA_DEV}" == "oracle-java" ]; then
 fi
 
 # Install the Java build requirements
-ncecho " [x] Installing Java build requirements "
-apt-get install -y --no-install-recommends ${BUILD_DEPS} >> "$log" 2>&1 &
-pid=$!;progress $pid
+# ncecho " [x] Installing Java build requirements "
+# apt-get install -y --no-install-recommends ${BUILD_DEPS} >> "$log" 2>&1 &
+# pid=$!;progress $pid
 
 # Make sure the required dirs exist.
 ncecho " [x] Making build directories "
@@ -447,15 +447,15 @@ chmod 0700 ${WORK_PATH}/gpg 2>/dev/null
 
 if [ -d ${WORK_PATH}/srcs/${JAVA_UPSTREAM}.git ]; then
     # Update the code
-    ncecho " [x] Updating from https://github.com/rraptorr/${JAVA_UPSTREAM} "
+    ncecho " [x] Updating from https://github.com/adaptavist/${JAVA_UPSTREAM} "
     cd ${WORK_PATH}/srcs/${JAVA_UPSTREAM}.git/ >> "$log" 2>&1
     git fetch >> "$log" 2>&1 &
     pid=$!;progress $pid
 else
     # Mirror the code
-    ncecho " [x] Mirroring https://github.com/rraptorr/${JAVA_UPSTREAM} "
+    ncecho " [x] Mirroring https://github.com/adaptavist/${JAVA_UPSTREAM} "
     cd ${WORK_PATH}/srcs/ >> "$log" 2>&1
-    git clone --mirror https://github.com/rraptorr/${JAVA_UPSTREAM} >> "$log" 2>&1 &
+    git clone --mirror https://github.com/adaptavist/${JAVA_UPSTREAM} >> "$log" 2>&1 &
     pid=$!;progress $pid
 fi
 
@@ -472,7 +472,7 @@ TAG=${TAG:-`git describe --abbrev=0 --tags`}
 # Clone from mirror, pointing to the tagged, stable, version.
 ncecho " [x] Cloning ${JAVA_UPSTREAM} with ${TAG} "
 cd ${WORK_PATH}/ >> "$log" 2>&1
-git clone -b ${TAG} ${WORK_PATH}/srcs/${JAVA_UPSTREAM}.git src >> "$log" 2>&1 &
+git clone ${WORK_PATH}/srcs/${JAVA_UPSTREAM}.git src >> "$log" 2>&1 &
 pid=$!;progress $pid
 
 # Cet the current Debian package version and package urgency
@@ -487,7 +487,7 @@ JAVA_UPD=`echo ${DEB_VERSION} | cut -d'.' -f2 | cut -d'-' -f1`
 if [ "${JAVA_UPD}" == "0" ]; then
     JAVA_UPD=
 else
-    JAVA_UPD="u${JAVA_UPD}"
+    JAVA_UPD="${JAVA_UPD}"
 fi
 
 ncecho " [x] Getting releases download page "
@@ -563,7 +563,7 @@ else
 fi
 
 DOWNLOAD_INDEX="technetwork/java/javase/downloads/${DOWNLOAD_INDEX_JCE}${JAVA_VER}-download-${DOWNLOAD_INDEX_NO}.html"
-wget http://www.oracle.com/${DOWNLOAD_INDEX} -O /tmp/oab-download-jce.html >> "$log" 2>&1 &
+wget http://www.oracle.com/${DOWNLOAD_INDEX} -O "${WORK_PATH}/oab-download-jce.html" >> "$log" 2>&1 &
 pid=$!;progress $pid
 
 # Get JCE download URL, size, and cookies required for download
@@ -577,7 +577,7 @@ elif [ "${JAVA_DEV}" == "oracle-java" ]; then
     else
         JCE_POLICY="jce_policy-8.zip"
     fi
-    DOWNLOAD_URL=`grep ${JCE_POLICY} /tmp/oab-download-jce.html | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
+    DOWNLOAD_URL=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f3 | cut -d'"' -f4`
 fi
 DOWNLOAD_SIZE=`grep ${JCE_POLICY} "${WORK_PATH}/oab-download-jce.html" | cut -d'{' -f2 | cut -d',' -f2 | cut -d'"' -f4`
 
@@ -590,7 +590,7 @@ ln -s ${WORK_PATH}/pkg/${JCE_POLICY} ${WORK_PATH}/src/${JCE_POLICY} >> "$log" 2>
 pid=$!;progress_loop $pid
 
 # Determine the new version
-NEW_VERSION="${DEB_VERSION}~${LSB_CODE}1"
+NEW_VERSION="${DEB_VERSION}~${LSB_CODE}2"
 
 if [ -n "${SKIP_REBUILD}" -a -r "${WORK_PATH}/deb/${JAVA_DEV}${JAVA_VER}_${NEW_VERSION}_${LSB_ARCH}.changes" ]; then
   echo " [!] Package exists, skipping build "
@@ -599,7 +599,7 @@ if [ -n "${SKIP_REBUILD}" -a -r "${WORK_PATH}/deb/${JAVA_DEV}${JAVA_VER}_${NEW_V
 fi
 
 # Genereate a build message
-BUILD_MESSAGE="Automated build for ${LSB_REL} using https://github.com/rraptorr/${JAVA_UPSTREAM}"
+BUILD_MESSAGE="Automated build for ${LSB_REL} using https://github.com/adaptavist/${JAVA_UPSTREAM}"
 
 # Change directory to the build directory
 cd ${WORK_PATH}/src
