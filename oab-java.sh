@@ -438,15 +438,15 @@ chmod 0700 ${WORK_PATH}/gpg 2>/dev/null
 
 if [ -d ${WORK_PATH}/srcs/${JAVA_UPSTREAM}.git ]; then
     # Update the code
-    ncecho " [x] Updating from https://github.com/rraptorr/${JAVA_UPSTREAM} "
+    ncecho " [x] Updating from https://github.com/adaptavist/${JAVA_UPSTREAM} "
     cd ${WORK_PATH}/srcs/${JAVA_UPSTREAM}.git/ >> "$log" 2>&1
     git fetch >> "$log" 2>&1 &
     pid=$!;progress $pid
 else
     # Mirror the code
-    ncecho " [x] Mirroring https://github.com/rraptorr/${JAVA_UPSTREAM} "
+    ncecho " [x] Mirroring https://github.com/adaptavist/${JAVA_UPSTREAM} "
     cd ${WORK_PATH}/srcs/ >> "$log" 2>&1
-    git clone --mirror https://github.com/rraptorr/${JAVA_UPSTREAM} >> "$log" 2>&1 &
+    git clone --mirror https://github.com/adaptavist/${JAVA_UPSTREAM} >> "$log" 2>&1 &
     pid=$!;progress $pid
 fi
 
@@ -586,7 +586,7 @@ if [ -n "${SKIP_REBUILD}" -a -r "${WORK_PATH}/deb/${JAVA_DEV}${JAVA_VER}_${NEW_V
 fi
 
 # Genereate a build message
-BUILD_MESSAGE="Automated build for ${LSB_REL} using https://github.com/rraptorr/${JAVA_UPSTREAM}"
+BUILD_MESSAGE="Automated build for ${LSB_REL} using https://github.com/adaptavist/${JAVA_UPSTREAM}"
 
 # Change directory to the build directory
 cd ${WORK_PATH}/src
