@@ -48,7 +48,7 @@ done
 
 MVN_URL=${MVN_URL:-"https://nexus.adaptavist.com/content/repositories/"}
 MVN_REPOID=${MVN_REPOID:-"nexus"}
-MVN_GROUPID=${MVN_GROUPID:-"com.adaptavist.mama.avst-app"}
+MVN_GROUPID=${MVN_GROUPID:-"com.adaptavist.mama.java"}
 MVN_REPO=${MVN_REPO:-"adaptavist"}
 
 echo "Publishing files \"${FILELIST_DEB}\""
@@ -64,7 +64,6 @@ for FILE in ${FILELIST_DEB}; do
                          -Dfile=${FILE} \
                          -DgroupId=${MVN_GROUPID} \
                          -DartifactId=${MVN_ARTIFACT} \
-                         -Dclassifier=all \
                          -Dversion=${VERSION} \
                          -Dpackaging=deb \
                          -DgeneratePom=true \
@@ -76,15 +75,22 @@ for FILE in ${FILELIST_DEB}; do
 for FILE in ${FILELIST_RPM}; do
     echo "Publishing \"${FILE}\" now"
     MVN_DESC=$( rpm -q -i -p ${FILE} | fgrep Summary | sed -e's/[^:]*: //' )
+    case "${FILE}" in
+        jdk-7* )
+            FILE_NAME="oracle-java7-jdk"
+            ;;
+        jdk-8* )
+            FILE_NAME="oracle-java8-jdk"
+            ;;
+    esac
     VERSION=$( rpm -q -i -p ${FILE} | fgrep Version | sed -e's/[^:]*: //' )
-    MVN_ARTIFACT=$( echo ${FILE} | sed -e's/_.*//' | sed -e's/pkg\///' )
+    MVN_ARTIFACT=$( echo ${FILE} | sed -e's/_.*//' | sed -e's/pkg\///' | sed -e's/\.rpm//' )
     CMD="mvn org.apache.maven.plugins:maven-deploy-plugin:2.8.1:deploy-file \
                          -Durl=${MVN_URL}/${MVN_REPO} \
                          -DrepositoryId=${MVN_REPOID} \
                          -Dfile=${FILE} \
                          -DgroupId=${MVN_GROUPID} \
                          -DartifactId=${MVN_ARTIFACT} \
-                         -Dclassifier=all \
                          -Dversion=${VERSION} \
                          -Dpackaging=rpm \
                          -DgeneratePom=true \
